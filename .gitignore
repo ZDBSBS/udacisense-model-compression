@@ -1,0 +1,16 @@
+# Secrets and environments
+.env
+.env.*
+!.env.example
+.venv/
+venv/
+
+# Python and Jupyter caches
+__pycache__/
+.ipynb_checkpoints/
+
+# Data
+**/data/
+
+# System files
+.DS_Store
