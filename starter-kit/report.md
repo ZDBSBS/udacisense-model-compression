@@ -4,7 +4,7 @@
 
 UdaciSense aims to expand its object recognition capability to budget-friendly smartphones without significantly reducing prediction quality. The primary business challenge was to decrease model size and inference latency while maintaining acceptable classification accuracy.
 
-To achieve this objective, multiple model compression techniques were evaluated, including dynamic quantization, static quantization, and knowledge distillation. Based on the experimental results, a multi-stage optimization pipeline combining knowledge distillation and static quantization was selected and implemented.
+To achieve this objective, multiple model compression techniques were evaluated, including static quantization, dynamic quantization, and knowledge distillation. Based on the experimental results, a multi-stage optimization pipeline combining knowledge distillation and static quantization was selected and implemented.
 
 The final optimized model successfully exceeded all CTO requirements. Model size was reduced from 5.96 MB to 1.31 MB, CPU inference latency decreased from 195.98 ms to 99.10 ms, and classification accuracy remained at 86.10%, well above the minimum acceptable threshold of 83.41%.
 
@@ -119,7 +119,7 @@ As a result, combining both techniques was the most promising strategy for a mul
 
 ## 3.1 Pipeline Design
 
-Three pipeline concepts were considered:
+Three pipeline concepts were considered during the planning stage.
 
 ### Pipeline 1 (Selected)
 
@@ -134,6 +134,8 @@ Post-Training Pruning → Quantization
 Knowledge Distillation → Quantization → Graph Optimization
 
 Pipeline 1 received the highest priority because the experimental results showed the strongest balance between size reduction, speed improvement, and accuracy preservation.
+
+Only Pipeline 1 was implemented and evaluated. Pipelines 2 and 3 were retained as alternative design options and were not executed because Pipeline 1 successfully met all CTO requirements.
 
 ## 3.2 Implementation
 
@@ -179,15 +181,13 @@ All requirements were successfully achieved.
 
 The pipeline demonstrated that combining complementary techniques is significantly more effective than applying either technique independently.
 
-Contribution of stages:
-
-### Distillation
+### Contribution of Distillation
 
 - Preserved accuracy
 - Reduced model size
 - Created performance margin
 
-### Quantization
+### Contribution of Quantization
 
 - Delivered most of the compression
 - Produced the majority of latency reduction
@@ -201,7 +201,11 @@ The final model achieved all optimization objectives while maintaining practical
 
 ## 4.1 Export Process
 
-The optimized model was prepared for mobile deployment using:
+The mobile deployment workflow was demonstrated using the distilled intermediate model produced during the first stage of the optimization pipeline.
+
+The final quantized pipeline model achieved the best compression results but could not be reloaded using the provided utility functions because of compatibility limitations with FX-quantized checkpoints. Therefore, the distilled intermediate model was selected for demonstrating TorchScript conversion, mobile optimization, and deployment verification.
+
+The selected model was prepared for mobile deployment using:
 
 1. TorchScript tracing
 2. Model freezing
@@ -223,7 +227,7 @@ TorchScript reduces runtime overhead and improves portability across mobile plat
 
 ## 4.3 Performance Verification
 
-Output consistency testing confirmed that the mobile model behaved identically to the original model.
+Output consistency testing confirmed that the mobile TorchScript model produced functionally identical predictions to the original distilled model.
 
 ### Consistency Results
 
@@ -258,36 +262,4 @@ The project successfully:
 
 Important findings include:
 
-- Early MobileNetV3 layers are highly quantization-sensitive.
-- Distillation provides valuable accuracy reserves.
-- Static quantization delivers the largest efficiency gains.
-- Combined optimization approaches outperform individual methods.
-
-## 5.3 Recommendations for Future Work
-
-Potential improvements include:
-
-- Quantization-Aware Training (QAT)
-- Structured channel pruning
-- Additional graph optimization
-- ARM-specific benchmarking
-- Real-device testing on Android and iOS hardware
-
-## 5.4 Business Impact
-
-The optimized solution enables:
-
-- Deployment on lower-cost smartphones
-- Improved application responsiveness
-- Lower hardware requirements
-- Reduced energy consumption
-- Expansion into budget-sensitive markets
-
-The final model provides a scalable foundation for broader adoption of UdaciSense technology while maintaining a high-quality user experience.
-
-## References
-
-- PyTorch Quantization Documentation
-- PyTorch Mobile Documentation
-- MobileNetV3 Research Paper
-- Knowledge Distillation Research Paper
+- Early MobileNetV3 layers
