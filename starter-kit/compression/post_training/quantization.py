@@ -12,17 +12,25 @@ from typing import Dict, Any, List, Optional, Tuple
 import torch
 import torch.nn as nn
 import torch.ao.quantization.quantize_fx as quantize_fx
+from torch.ao.quantization import QuantStub, DeQuantStub, fuse_modules, get_default_qconfig_mapping
 from torch.utils.data import DataLoader
+from torchvision.ops.misc import Conv2dNormActivation
 from tqdm import tqdm
 
 # TODO: Make MobileNetV3_Household model quantizable using stubs
 # Consider whether you want to quantize the whole model or parts of it only
 class QuantizableMobileNetV3_Household(nn.Module):
     def __init__(self, original_model):
-        pass
+        super().__init__()
+        self.quant = QuantStub()
+        self.model = copy.deepcopy(getattr(original_model, "model", original_model))
+        self.dequant = DeQuantStub()
 
     def forward(self, x):
-        pass
+        x = self.quant(x)
+        x = self.model(x)
+        x = self.dequant(x)
+        return x
     
     def fuse_model(self) -> None:
         """
@@ -37,7 +45,17 @@ class QuantizableMobileNetV3_Household(nn.Module):
         modules_to_fuse = []
 
         # TODO: Identify patterns to fuse (Conv+BN, Conv+BN+ReLU, etc.)
-        pass
+        for name, module in self.model.named_modules():
+            if isinstance(module, Conv2dNormActivation):
+                if len(module) > 2 and isinstance(module[2], nn.ReLU):
+                    modules_to_fuse.append([f"{name}.0", f"{name}.1", f"{name}.2"])
+                elif len(module) > 1 and isinstance(module[1], nn.BatchNorm2d):
+                    # Hardswish cannot be fused, so only Conv + BN
+                    modules_to_fuse.append([f"{name}.0", f"{name}.1"])
+
+        self.model.eval()
+        fuse_modules(self.model, modules_to_fuse, inplace=True)
+        print(f"Fused {len(modules_to_fuse)} module groups")
         
 
 def quantize_model(
@@ -71,7 +89,7 @@ def quantize_model(
         raise ValueError("Backend must be either 'fbgemm' (x86) or 'qnnpack' (ARM)")
     
     # Create a copy of the model for quantization
-    model_to_quantize = copy.deepcopy(model)
+    model_to_quantize = copy.deepcopy(model).cpu()  # Quantized models run on CPU only
     
     # Set model to evaluation mode
     model_to_quantize.eval()
@@ -103,7 +121,12 @@ def _apply_dynamic_quantization(
     Returns:
         Dynamically quantized model
     """
-    pass
+    print("Applying dynamic quantization...")
+    # Only Linear layers support dynamic quantization
+    quantized_model = torch.ao.quantization.quantize_dynamic(
+        model, {nn.Linear}, dtype=torch.qint8
+    )
+    return quantized_model
                 
 
 # TODO: Implement static quantization, if selected
@@ -133,5 +156,45 @@ def _apply_static_quantization(
     # If calibration_num_batches is not specified, use all available batches
     if calibration_num_batches is None:
         calibration_num_batches = len(calibration_data_loader)
-        
-    pass
+
+    torch.backends.quantized.engine = backend
+    qconfig_mapping = get_default_qconfig_mapping(backend)
+
+    # Early layers are very sensitive to INT8 and stay in FP32
+    for layer_name in ["features.0", "features.1", "features.2"]:
+        qconfig_mapping = qconfig_mapping.set_module_name(layer_name, None)
+
+    # Quantize only the inner network; preprocessing in the outer forward stays FP32
+    has_wrapper = hasattr(model, "model") and isinstance(model.model, nn.Module)
+    inner_model = model.model if has_wrapper else model
+
+    # Capture the real input of the inner network (after resizing)
+    captured = {}
+
+    def _capture_input(module, args):
+        captured["x"] = args[0].detach()
+
+    handle = inner_model.register_forward_pre_hook(_capture_input)
+    with torch.no_grad():
+        model(next(iter(calibration_data_loader))[0][:1].cpu())
+    handle.remove()
+
+    # Prepare: trace graph, fuse layers and insert observers
+    prepared_inner = quantize_fx.prepare_fx(inner_model, qconfig_mapping, (captured["x"],))
+    if has_wrapper:
+        model.model = prepared_inner
+    else:
+        model = prepared_inner
+
+    # Calibrate: collect activation ranges
+    with torch.no_grad():
+        for i, (inputs, _) in enumerate(tqdm(calibration_data_loader, total=calibration_num_batches, desc="Calibrating")):
+            if i >= calibration_num_batches:
+                break
+            model(inputs.cpu())
+
+    # Convert: replace observed modules with INT8 modules
+    if has_wrapper:
+        model.model = quantize_fx.convert_fx(model.model)
+        return model
+    return quantize_fx.convert_fx(model)

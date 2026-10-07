@@ -1,0 +1,84 @@
+{
+    "baseline": {
+        "accuracy": {
+            "top1_acc": 87.8,
+            "top5_acc": 99.1
+        },
+        "per_class_accuracy": {
+            "clock": 95.0,
+            "keyboard": 93.0,
+            "lamp": 94.0,
+            "telephone": 74.0,
+            "television": 89.0,
+            "bed": 86.0,
+            "chair": 92.0,
+            "couch": 74.0,
+            "table": 88.0,
+            "wardrobe": 93.0
+        },
+        "timing": {
+            "cpu": {
+                "total_time_ms": 16302.220821380615,
+                "avg_time_ms": 163.02220821380615,
+                "fps": 6.1341335696329455
+            }
+        },
+        "size": {
+            "total_params": 1528106,
+            "trainable_params": 1528106,
+            "model_size_bytes": 6245938,
+            "model_size_mb": 5.95659065246582
+        },
+        "memory": {
+            "peak_memory_mb": null,
+            "allocated_memory_mb": null
+        }
+    },
+    "optimized": {
+        "accuracy": {
+            "top1_acc": 85.5,
+            "top5_acc": 99.0
+        },
+        "per_class_accuracy": {
+            "clock": 94.0,
+            "keyboard": 88.0,
+            "lamp": 94.0,
+            "telephone": 75.0,
+            "television": 88.0,
+            "bed": 77.0,
+            "chair": 94.0,
+            "couch": 62.0,
+            "table": 88.0,
+            "wardrobe": 93.0
+        },
+        "timing": {
+            "cpu": {
+                "total_time_ms": 12998.443841934204,
+                "avg_time_ms": 129.98443841934204,
+                "fps": 7.6932286061344195
+            }
+        },
+        "size": {
+            "total_params": 4856,
+            "trainable_params": 4640,
+            "model_size_bytes": 1836964,
+            "model_size_mb": 1.7518653869628906
+        },
+        "memory": {
+            "peak_memory_mb": null,
+            "allocated_memory_mb": null
+        }
+    },
+    "improvements": {
+        "size_reduction": 0.7058946150281991,
+        "params_reduction": 0.9969635614283302,
+        "inference": {
+            "cpu": {
+                "speedup": 1.2541671156656549,
+                "reduction": 0.20265809276202762
+            }
+        },
+        "accuracy_change": -0.022999999999999972,
+        "memory_reduction": null
+    }
+}
