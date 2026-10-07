@@ -17,6 +17,9 @@ from torch.utils.data import DataLoader
 from torchvision.ops.misc import Conv2dNormActivation
 from tqdm import tqdm
 
+# Blocks kept in FP32 because they are very sensitive to INT8
+FP32_BLOCKS = ["features.0", "features.1", "features.2"]
+
 # TODO: Make MobileNetV3_Household model quantizable using stubs
 # Consider whether you want to quantize the whole model or parts of it only
 class QuantizableMobileNetV3_Household(nn.Module):
@@ -161,7 +164,7 @@ def _apply_static_quantization(
     qconfig_mapping = get_default_qconfig_mapping(backend)
 
     # Early layers are very sensitive to INT8 and stay in FP32
-    for layer_name in ["features.0", "features.1", "features.2"]:
+    for layer_name in FP32_BLOCKS:
         qconfig_mapping = qconfig_mapping.set_module_name(layer_name, None)
 
     # Quantize only the inner network; preprocessing in the outer forward stays FP32
