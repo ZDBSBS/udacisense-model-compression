@@ -201,50 +201,23 @@ The final model achieved all optimization objectives while maintaining practical
 
 ## 4.1 Export Process
 
-The mobile deployment workflow was demonstrated using the distilled intermediate model produced during the first stage of the optimization pipeline.
-
-The final quantized pipeline model achieved the best compression results but could not be reloaded using the provided utility functions because of compatibility limitations with FX-quantized checkpoints. Therefore, the distilled intermediate model was selected for demonstrating TorchScript conversion, mobile optimization, and deployment verification.
-
-The selected model was prepared for mobile deployment using:
-
-1. TorchScript tracing
-2. Model freezing
-3. PyTorch Mobile optimization
-
-The resulting model was exported as a mobile-compatible TorchScript model.
+The final quantized pipeline model (distillation followed by static INT8 quantization) was deployed. FX-quantized checkpoints cannot be loaded with the provided load_model utility, so the model was rebuilt from the distilled student with the same quantization settings, the saved quantized weights were restored (accuracy 86.0% after restoring), and the model was traced, frozen and saved as TorchScript (models/mobile/optimized_model_mobile.pt).
 
 ## 4.2 Mobile-Specific Considerations
 
-Important deployment considerations include:
-
-- Limited CPU resources
-- Restricted memory availability
-- Battery consumption
-- Thermal throttling
-- Device-to-device variability
-
-TorchScript reduces runtime overhead and improves portability across mobile platforms.
+- The model is quantized for x86 (fbgemm). Phones need a qnnpack-quantized model and a new measurement on ARM hardware.
+- optimize_for_mobile made the model about 100 times slower on our x86 test machine (about 3400 ms instead of about 35 ms). The likely cause is its rewrite of operators for ARM kernels (not verified). The deployed model does not use it. A version with the optimizer is kept in models/mobile/optimized_model_mobile_with_optimizer.pt for comparison.
+- Memory, battery, thermal throttling and device variability remain open points for real-device tests.
 
 ## 4.3 Performance Verification
 
-Output consistency testing confirmed that the mobile TorchScript model produced functionally identical predictions to the original distilled model.
+| Metric | Quantized TorchScript model | Requirement |
+|---|---|---|
+| Top-1 accuracy | 86.10% | >= 83.41% |
+| Model size | 1.27 MB | <= 4.17 MB |
+| CPU time (median) | 35.0 ms | <= 117.59 ms |
 
-### Consistency Results
-
-- Output Shape: (1,10)
-- Maximum Absolute Difference: 0.00000620
-- Result: PASSED
-
-### Model Size
-
-| Metric | Value |
-|----------|----------|
-| Original Distilled Model | 4.24 MB |
-| Mobile Model | 4.12 MB |
-| Reduction | 2.74% |
-
-The mobile optimizer achieved a small additional reduction while preserving prediction quality.
-
+In eager mode the same model took 85.4 ms and the baseline 120.1 ms in the same session. Timings vary on the shared workspace CPU, but all measured values meet the target. The measurements were made on x86, not on a phone.
 ---
 
 # 5. Conclusion and Recommendations
