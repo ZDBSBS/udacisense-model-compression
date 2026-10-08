@@ -244,7 +244,7 @@ In eager mode the same model took 85.4 ms and the baseline 120.1 ms in the same 
 
 ## 5.4 Business Impact
 
-The optimized model is 78% smaller and about half as slow to run, with an accuracy loss of 1.7 points. This makes the feature practical on lower-cost smartphones, improves responsiveness and opens budget-sensitive markets. Real-device tests are the next step before release.
+The optimized model is 78% smaller and about twice as fast to run, with an accuracy loss of 1.7 points. This makes the feature practical on lower-cost smartphones, improves responsiveness and opens budget-sensitive markets. Real-device tests are the next step before release.
 
 ## References
 
